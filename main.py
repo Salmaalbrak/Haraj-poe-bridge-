@@ -174,31 +174,41 @@ def format_results_ar(items: List[Dict[str, Any]]) -> str:
     return "\n\n".join(lines)
 
 # ===== المسارات =====
+# ==== المسارات ====
 @app.get("/")
 async def root():
     return {"ok": True, "service": "Haraj↔Poe Bridge"}
 
 @app.post("/poe")
-async def poe_bridge(msg: PoeMessage):
+async def poe_bridge(msg: PoeMessage, request: Request):
+    # تحقق من المفتاح
+    access_key = request.headers.get("X-Access-Key")
+    if access_key != "2AwRr0kpXdhU5AEbge8fP5yalCSsLDs":
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     prefs = SESSIONS.get(msg.conversation_id, Preferences())
     extracted = extract_prefs_from_text(msg.text)
     prefs = merge_prefs(prefs, extracted)
     SESSIONS[msg.conversation_id] = prefs
 
-    if any(k in msg.text for k in ["امسح", "ابدأ من جديد", "reset", "مسح الشروط"]):
+    if any(k in msg.text for k in ["امسح", "reset", "ابدا من جديد"]):
         SESSIONS[msg.conversation_id] = Preferences()
-        return {"text": "تم مسح الشروط. قولي مواصفاتك من جديد (ماركة/موديل/سعر/مدينة/سنة…)."}
+        return {"text": "تم مسح التفضيلات، قولي مواصفاتك من جديد (ماركة/موديل/سعر/سنة...إلخ)."}
 
     filters = prefs_to_filters(prefs)
     try:
         res = await gql_search(filters, page=1, limit=10)
         reply = format_results_ar(res.get("items", []))
     except HTTPException as e:
-        reply = "فيه ضغط على خدمة حراج الآن (Rate limit). جرّبي بعد لحظات." if e.status_code == 429 \
-                else f"صار خطأ أثناء البحث: {e.detail}"
+        if e.status_code == 429:
+            reply = "جرب بعد لحظات، فيه حد للطلبات (Rate limit)."
+        else:
+            reply = f"صار خطأ: {e.detail}"
 
-    summary = " | ".join([f"{k}:{v}" for k,v in prefs.dict().items() if v])
+    summary = " | ".join([f"{k}:{v}" for k, v in prefs.dict().items() if v])
     if summary:
-        reply += "\n\n— الشروط الحالية: " + summary
+        reply += "\n\n🔎 التفضيلات الحالية: " + summary
 
     return {"text": reply}
+
+    
