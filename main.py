@@ -174,7 +174,6 @@ def format_results_ar(items: List[Dict[str, Any]]) -> str:
     return "\n\n".join(lines)
 
 # ===== المسارات =====
-# ==== المسارات ====
 @app.get("/")
 async def root():
     return {"ok": True, "service": "Haraj↔Poe Bridge"}
