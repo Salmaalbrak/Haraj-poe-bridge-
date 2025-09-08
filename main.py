@@ -191,6 +191,9 @@ async def root():
 @app.head("/poe")
 async def poe_head():
     return {}
+@app.get("/poe")
+async def poe_check():
+    return {"ok": True, "message": "Poe bot is alive"}
 
 # ===== مسار المحادثة مع Poe =====
 @app.post("/poe")
